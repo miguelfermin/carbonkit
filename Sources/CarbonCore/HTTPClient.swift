@@ -28,29 +28,32 @@ public protocol HTTPClientProtocol {
     /// Executes an HTTP request to a server using information specified in HTTPRequest.
     /// - Parameter request: An HTTPRequest  that provides request-specific information such as the URL, request type, and body.
     /// - Returns: The URL contents as a Data instance.
-    func data(for request: HTTPRequest) async throws -> Data
+    func data(for request: HTTPRequest) async throws(CError) -> Data
     
     /// Executes an HTTP request to a server using information specified in HTTPRequest.
     /// - Parameter request: An HTTPRequest  that provides request-specific information such as the URL, request type, and body.
-    func send(_ request: HTTPRequest) async throws
+    func send(_ request: HTTPRequest) async throws(CError)
     
     /// Executes an HTTP request to a server using information specified in HTTPRequest.
     /// - Parameter request: An HTTPRequest  that provides request-specific information such as the URL, request type, and body.
     /// - Returns: The URL contents decoded using a JSONDecoder for the specified type T.
-    func send<T: Decodable>(_ request: HTTPRequest) async throws -> T
+    func send<T: Decodable>(_ request: HTTPRequest) async throws(CError) -> T
 }
 
 extension HTTPClientProtocol {
-    public func send(_ request: HTTPRequest) async throws {
+    public func send(_ request: HTTPRequest) async throws(CError) {
         let _: Data = try await data(for: request)
     }
     
-    public func send<T: Decodable>(_ request: HTTPRequest) async throws -> T {
+    public func send<T: Decodable>(_ request: HTTPRequest) async throws(CError) -> T {
         let data = try await data(for: request)
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = request.dateDecodingStrategy
-        let value = try decoder.decode(T.self, from: data)
-        return value
+        do {
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            throw CError(code: -1, description: error.localizedDescription, info: ["Decoding Error": "..."])
+        }
     }
 }
 
@@ -64,7 +67,7 @@ public actor HTTPClient: HTTPClientProtocol {
         self.headersProvider = headersProvider
     }
     
-    public func data(for request: HTTPRequest) async throws -> Data {
+    public func data(for request: HTTPRequest) async throws(CError) -> Data {
         do {
             let urlRequest = try await request.urlRequest(headersProvider: headersProvider)
             let (data, urlResponse) = try await session.data(for: urlRequest)
@@ -87,14 +90,9 @@ public actor HTTPClient: HTTPClientProtocol {
             return data
         } catch {
             error.log(request)
-            throw error
+            throw CError(code: -1, description: error.localizedDescription, info: nil)
         }
     }
-}
-
-// MARK: - HttpClientError
-enum HttpClientError: Error {
-    case invalidServerResponse
 }
 
 // MARK: - CError+Helper
@@ -126,7 +124,8 @@ extension CError {
     }
     
     fileprivate init(from data: Data, response: HTTPURLResponse) {
-        self.init(code: response.statusCode, description: "N/A: check data field", info: nil)
+        let description = String(decoding: data, as: UTF8.self)
+        self.init(code: response.statusCode, description: description, info: nil)
         self.data = data
     }
 }
@@ -134,6 +133,9 @@ extension CError {
 // MARK: - URLResponse+Helper
 extension URLResponse {
     fileprivate func toHTTPURLResponse() throws -> HTTPURLResponse {
+        enum HttpClientError: Error {
+            case invalidServerResponse
+        }
         guard let response = (self as? HTTPURLResponse) else {
             throw HttpClientError.invalidServerResponse
         }
