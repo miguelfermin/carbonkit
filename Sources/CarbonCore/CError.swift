@@ -16,6 +16,10 @@ public struct CError: Error, LocalizedError, Decodable {
     /// A dictionary containing additional error information.
     public let info: [String: String]?
     
+    /// Arbitrary data which contents depends on the context of the calling receiving this error.
+    /// For example, for an HTTP operation, the data could be the response body payload.
+    public internal(set) var data: Data? = nil
+    
     public var errorDescription: String? { description }
     
     public init(code: Int, description: String, info: [String : String]?) {
