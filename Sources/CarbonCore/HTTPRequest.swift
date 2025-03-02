@@ -14,7 +14,7 @@ public struct HTTPRequest: Sendable {
     public let timeoutInterval: TimeInterval
     public let dateDecodingStrategy: JSONDecoder.DateDecodingStrategy
     
-    private(set) var headersStrategy: HTTPRequestHeadersStrategy = .normal
+    private(set) var headersStrategy: HTTPRequestHeadersStrategy
     
     public init(
         url: URL,
@@ -24,8 +24,20 @@ public struct HTTPRequest: Sendable {
     ) {
         self.url = url
         self.method = method
+        self.headersStrategy = .normal
         self.timeoutInterval = timeoutInterval
         self.dateDecodingStrategy = dateDecodingStrategy
+    }
+    
+    public init(
+        url: URL,
+        method: HTTPMethod = .get,
+        headers: [String: String],
+        timeoutInterval: TimeInterval = 20,
+        dateDecodingStrategy: JSONDecoder.DateDecodingStrategy = .iso8601
+    ) {
+        self.init(url: url, method: method, timeoutInterval: timeoutInterval, dateDecodingStrategy: dateDecodingStrategy)
+        self.headersStrategy = .custom(headers)
     }
     
     func urlRequest(headersProvider: HTTPHeadersProvider) async throws -> URLRequest {
@@ -79,7 +91,7 @@ public enum HTTPMethod: Sendable {
 }
 
 // MARK: - HTTPRequestHeadersStrategy
-public enum HTTPRequestHeadersStrategy: Equatable, Sendable {
+enum HTTPRequestHeadersStrategy: Equatable, Sendable {
     case normal
     case skipRefresh
     case custom([String: String])
