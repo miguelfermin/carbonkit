@@ -8,55 +8,6 @@
 
 import Foundation
 
-/// Provides all HTTP header fields and refreshes header fields values, where the refresh meaning is determine
-/// by conforming types.
-public protocol HTTPHeadersProvider: Actor {
-    /// All HTTP header fields, either cached or computed.
-    /// - Returns: All HTTP header fields.
-    func allHeaders() async throws -> [String: String]
-    
-    /// Refreshes all HTTP header fields and returns them.
-    /// - Returns: All HTTP header fields after a refresh operation.
-    func allRefreshedHeaders() async throws -> [String : String]
-}
-
-/// HTTPClientProtocol makes it easy and consistent to communicate with HTTP servers.
-public protocol HTTPClientProtocol {
-    /// Responsible for HTTP header fields applied to each HTTP request.
-    var headersProvider: HTTPHeadersProvider { get }
-    
-    /// Executes an HTTP request to a server using information specified in HTTPRequest.
-    /// - Parameter request: An HTTPRequest  that provides request-specific information such as the URL, request type, and body.
-    /// - Returns: The URL contents as a Data instance.
-    func data(for request: HTTPRequest) async throws(CError) -> Data
-    
-    /// Executes an HTTP request to a server using information specified in HTTPRequest.
-    /// - Parameter request: An HTTPRequest  that provides request-specific information such as the URL, request type, and body.
-    func send(_ request: HTTPRequest) async throws(CError)
-    
-    /// Executes an HTTP request to a server using information specified in HTTPRequest.
-    /// - Parameter request: An HTTPRequest  that provides request-specific information such as the URL, request type, and body.
-    /// - Returns: The URL contents decoded using a JSONDecoder for the specified type T.
-    func send<T: Decodable>(_ request: HTTPRequest) async throws(CError) -> T
-}
-
-extension HTTPClientProtocol {
-    public func send(_ request: HTTPRequest) async throws(CError) {
-        let _: Data = try await data(for: request)
-    }
-    
-    public func send<T: Decodable>(_ request: HTTPRequest) async throws(CError) -> T {
-        let data = try await data(for: request)
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = request.dateDecodingStrategy
-        do {
-            return try decoder.decode(T.self, from: data)
-        } catch {
-            throw CError(code: -1, description: error.localizedDescription, info: ["Decoding Error": "..."])
-        }
-    }
-}
-
 /// HTTPClient makes it easy and consistent to communicate with HTTP servers.
 public actor HTTPClient: HTTPClientProtocol {
     private let session = URLSession(configuration: .default)
@@ -71,7 +22,6 @@ public actor HTTPClient: HTTPClientProtocol {
         do {
             let urlRequest = try await request.urlRequest(headersProvider: headersProvider)
             let (data, urlResponse) = try await session.data(for: urlRequest)
-            
             let response = try urlResponse.toHTTPURLResponse()
             guard response.isOk else {
                 if response.isUnauthorized && request.headersStrategy.isNormal {
@@ -80,17 +30,51 @@ public actor HTTPClient: HTTPClientProtocol {
                     request.updateHeadersStrategy(.custom(headers))
                     return try await self.data(for: request)
                 } else {
-                    if let error = try? CError(from: data) {
-                        throw error
-                    } else {
-                        throw CError(from: data, response: response)
-                    }
+                    throw Self.parseError(data: data, response: response)
                 }
             }
             return data
+        } catch let error as CError {
+            error.log(request)
+            throw error
         } catch {
             error.log(request)
             throw CError(code: -1, description: error.localizedDescription, info: nil)
+        }
+    }
+}
+
+extension HTTPClient {
+    public static func send<T: Decodable>(_ request: HTTPRequest, headers: [String : String]?) async throws(CError) -> T {
+        do {
+            var urlRequest = URLRequest(url: request.url)
+            urlRequest.httpMethod = request.method.string
+            urlRequest.httpBody = request.method.jsonEncoded
+            urlRequest.timeoutInterval = request.timeoutInterval
+            urlRequest.allHTTPHeaderFields = headers
+            let (data, urlResponse) = try await URLSession.shared.data(for: urlRequest)
+            let response = try urlResponse.toHTTPURLResponse()
+            guard response.isOk else {
+                throw parseError(data: data, response: response)
+            }
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = request.dateDecodingStrategy
+            let result = try decoder.decode(T.self, from: data)
+            return result
+        } catch let error as CError {
+            error.log(request)
+            throw error
+        } catch {
+            error.log(request)
+            throw CError(code: -1, description: error.localizedDescription, info: nil)
+        }
+    }
+    
+    private static func parseError(data: Data, response: HTTPURLResponse) -> CError {
+        if let error = try? CError(from: data) {
+            return error
+        } else {
+            return CError(from: data, response: response)
         }
     }
 }
@@ -111,7 +95,7 @@ extension CError {
                 }
             }
         }
-        guard let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: String] else {
+        guard let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: AnyObject] else {
             throw CErrorDecoding.badPayload
         }
         guard let code = json["code"] as? Int else {
