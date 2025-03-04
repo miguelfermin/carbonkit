@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import CarbonCore
 
 @MainActor
 @Observable
@@ -14,7 +15,7 @@ final public class CTaskLoader {
     public enum LoaderState {
         case idle
         case loading(LocalizedStringKey)
-        case error(String, String?, [PostAction])
+        case error(CError, [PostAction] = [])
         case success(LocalizedStringKey, LocalizedStringKey?, Int? = nil, (() -> Void)? = nil)
     }
     
@@ -55,10 +56,9 @@ extension View {
                 title: title,
                 content: { self }
             )
-        case .error(let title, let description, let actions):
+        case .error(let error, let actions):
             AlertError(
-                title: title,
-                description: description,
+                error: error,
                 actions: actions,
                 loader: loader,
                 content: { self }
@@ -77,24 +77,40 @@ extension View {
 }
 
 private struct AlertError<Content: View>: View {
-    let title: String
-    let description: String?
+    let error: CError
     let actions: [CTaskLoader.PostAction]
     let loader: CTaskLoader
     let content: () -> Content
+    
+    @State private var showErrorInfo: Bool = false
+    
+    private var errorText: String {
+        if showErrorInfo {
+            "Error (\(error.code.description))"
+        } else {
+            "Error"
+        }
+    }
     
     var body: some View {
         VStack {
             Image(systemName: "xmark.circle")
                 .font(.system(size: 40, weight: .semibold, design: .rounded))
                 .foregroundStyle(.red)
+                .onTapGesture(count: 4) {
+                    showErrorInfo.toggle()
+                }
             VStack(spacing: 8) {
-                Text(title)
+                Text(errorText)
                     .font(.system(size: 20, weight: .semibold, design: .rounded))
                     .foregroundStyle(.primary)
-                if let description {
-                    Text(description)
-                        .font(.system(size: 18, weight: .regular, design: .rounded))
+                Text(error.description)
+                    .font(.system(size: 18, weight: .regular, design: .rounded))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                if let info = error.info, showErrorInfo {
+                    Text(info.description)
+                        .font(.system(size: 16, weight: .regular, design: .rounded))
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 }
@@ -236,7 +252,9 @@ extension View {
                 job.state = .loading("signing up to Youhoop systems, please wait...")
                 try? await Task.sleep(for: .seconds(1.5))
                 
-                await job.state = .error("Error Title", "This is an error message we got duing the signup.", [
+                let error = CError(code: 10000, description: "This is an error message we got duing the signup.", info: [:])
+                
+                await job.state = .error(error, [
                     .init(label: "Cancel", action: {
                         job.state = .idle
                     }),
@@ -256,7 +274,9 @@ extension View {
                 job.state = .loading("signing up to Youhoop systems, please wait...")
                 try? await Task.sleep(for: .seconds(1.5))
                 
-                await job.state = .error("Error Title", "This is an error message we got duing the signup.", [
+                let error = CError(code: 10000, description: "This is an error message we got duing the signup.", info: [:])
+                
+                await job.state = .error(error, [
                     .init(label: "Cancel", action: {
                         job.state = .idle
                     }),
