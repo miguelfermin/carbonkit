@@ -10,10 +10,11 @@ import SwiftUI
 
  public struct CButton: View {
      public enum Style {
-         case primary, secondary, tertiary, alert
+         case primary, secondary, tertiary, alert, destructive
          var color: Color {
              switch self {
              case .alert: return .secondary
+             case .destructive: return .red
              default: return Color.accentColor
              }
          }
@@ -59,7 +60,7 @@ fileprivate extension View {
     @ViewBuilder
     public func applyButtonStyle(for style: CButton.Style) -> some View {
         switch style {
-        case .primary:
+        case .primary, .destructive:
             self.buttonStyle(.borderedProminent)
         case .secondary, .alert:
             self.buttonStyle(.bordered)
