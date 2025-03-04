@@ -27,8 +27,4 @@ public struct CError: Error, LocalizedError, Decodable {
         self.description = description
         self.info = info
     }
-    
-    public static func sample(_ description: String) -> Self {
-        .init(code: -1, description: description, info: nil)
-    }
 }
