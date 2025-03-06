@@ -136,17 +136,16 @@ extension HTTPURLResponse {
 
 // MARK: - Error+Helper
 extension Error {
-    fileprivate func log(_ request: HTTPRequest, fileID: String = #fileID, function: String = #function) {
+    fileprivate func log(_ request: HTTPRequest, function: String = #function) {
         print("""
-***************************************************************
-Error
-    - File:             \(fileID)
-    - Function:         \(function)
-    - Request URL:      \(request.url)
-    - Request Method:   \(request.method)
-    - Localized:        \(localizedDescription)
-    - Carbon Error:     \((self as? CError)?.description ?? "N/A")
-***************************************************************
+🔥 Error:
+    - File:         \(#file)
+    - Line:         \(#line)
+    - Function:     \(function)
+    - Request URL:  \(request.url)
+    - HTTP Method:  \(request.method.string)
+    - Domain Code:  \((self as? CError)?.code ?? 0)
+    - Description:  \(localizedDescription)
 """)
     }
 }
