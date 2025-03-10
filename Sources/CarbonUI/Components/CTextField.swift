@@ -66,6 +66,12 @@ public struct CTextField: View {
                                 validation = validationType.validate(text)
                             }
                         }
+                        .onChange(of: validation) { _, newValue in
+                            if newValue == .normal {
+                                hasEdited = false
+                                hasLooseFocus = false
+                            }
+                        }
                     
                     if !withinForm {
                         RoundedRectangle(cornerSize: .init(width: 1, height: 1))
