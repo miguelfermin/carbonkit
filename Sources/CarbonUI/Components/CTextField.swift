@@ -9,7 +9,7 @@
 import SwiftUI
 
 public struct CTextField: View {
-    let title: String
+    let title: LocalizedStringKey
     let color = Color.secondary
     let validationType: ValidationType
     
@@ -25,7 +25,7 @@ public struct CTextField: View {
     private var withinForm: Bool
     
     public init(
-        _ title: String,
+        _ title: LocalizedStringKey,
         text: Binding<String>,
         validationType: ValidationType,
         validation: Binding<TextFieldValidationState> = .constant(.normal),
@@ -160,7 +160,6 @@ public struct CTextField: View {
         )
     }
 }
-
 
 // MARK: - ValidationType
 public enum ValidationType {
