@@ -34,18 +34,14 @@ public actor HTTPClient: HTTPClientProtocol {
                 }
             }
             return data
-        } catch let error as CError {
-            error.log(request)
-            throw error
         } catch {
-            error.log(request)
-            throw CError(code: -1, description: error.localizedDescription, info: nil)
+            throw Self.mapToCError(error, request: request)
         }
     }
 }
 
 extension HTTPClient {
-    public static func send<T: Decodable>(_ request: HTTPRequest, headers: [String : String]?) async throws(CError) -> T {
+    public static func data(for request: HTTPRequest, headers: [String : String]?) async throws(CError) -> Data {
         do {
             var urlRequest = URLRequest(url: request.url)
             urlRequest.httpMethod = request.method.string
@@ -57,16 +53,38 @@ extension HTTPClient {
             guard response.isOk else {
                 throw parseError(data: data, response: response)
             }
+            return data
+        } catch {
+            throw mapToCError(error, request: request)
+        }
+    }
+    
+    public static func send(_ request: HTTPRequest, headers: [String : String]?) async throws(CError) {
+        do {
+            let _: Data = try await data(for: request, headers: headers)
+        } catch {
+            throw mapToCError(error, request: request)
+        }
+    }
+    
+    public static func send<T: Decodable>(_ request: HTTPRequest, headers: [String : String]?) async throws(CError) -> T {
+        do {
+            let data: Data = try await data(for: request, headers: headers)
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = request.dateDecodingStrategy
             let result = try decoder.decode(T.self, from: data)
             return result
-        } catch let error as CError {
-            error.log(request)
-            throw error
         } catch {
-            error.log(request)
-            throw CError(code: -1, description: error.localizedDescription, info: nil)
+            throw mapToCError(error, request: request)
+        }
+    }
+    
+    private static func mapToCError(_ error: any Error, request: HTTPRequest) -> CError {
+        error.log(request)
+        if let error = error as? CError {
+            return error
+        } else {
+            return CError(code: -1, description: error.localizedDescription, info: nil)
         }
     }
     
