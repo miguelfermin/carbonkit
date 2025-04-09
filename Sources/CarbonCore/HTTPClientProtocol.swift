@@ -21,7 +21,7 @@ public protocol HTTPHeadersProvider: Actor {
 }
 
 /// HTTPClientProtocol makes it easy and consistent to communicate with HTTP servers.
-public protocol HTTPClientProtocol {
+public protocol HTTPClientProtocol: Actor {
     /// Responsible for HTTP header fields applied to each HTTP request.
     var headersProvider: HTTPHeadersProvider { get }
     
@@ -38,6 +38,11 @@ public protocol HTTPClientProtocol {
     /// - Parameter request: An HTTPRequest  that provides request-specific information such as the URL, request type, and body.
     /// - Returns: The URL contents decoded using a JSONDecoder for the specified type T.
     func send<T: Decodable>(_ request: HTTPRequest) async throws(CError) -> T
+    
+    /// Convenience method that sends a GET request to the specified URL.
+    /// - Parameter url: The URL to send the request to.
+    /// - Returns: The URL contents decoded using a JSONDecoder for the specified type T.
+    func get<T: Decodable>(_ url: URL) async throws(CError) -> T
 }
 
 extension HTTPClientProtocol {
@@ -54,5 +59,10 @@ extension HTTPClientProtocol {
         } catch {
             throw CError(code: -1, description: error.localizedDescription, info: ["Decoding Error": "..."])
         }
+    }
+    
+    public func get<T: Decodable>(_ url: URL) async throws(CError) -> T {
+        let req = HTTPRequest(url: url)
+        return try await send(req)
     }
 }
