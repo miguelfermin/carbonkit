@@ -19,7 +19,7 @@ public struct HTTPRequest: Sendable {
     public init(
         url: URL,
         method: HTTPMethod = .get,
-        timeoutInterval: TimeInterval = 20,
+        timeoutInterval: TimeInterval = 60,
         dateDecodingStrategy: JSONDecoder.DateDecodingStrategy = .iso8601
     ) {
         self.url = url
