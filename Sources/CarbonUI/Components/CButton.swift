@@ -23,6 +23,7 @@ import SwiftUI
      let key: LocalizedStringKey
      let style: Style
      let maxWidth: CGFloat?
+     let image: Image?
      let disabled: () -> Bool
      let action: @MainActor () async -> Void
      let buttonsTintColor = Color.accentColor
@@ -31,12 +32,14 @@ import SwiftUI
         _ key: LocalizedStringKey,
         style: Style = .primary,
         maxWidth: CGFloat? = .infinity,
+        image: Image? = nil,
         disabled: @escaping () -> Bool = { false },
         action: @escaping @MainActor () async -> Void
      ) {
          self.key = key
          self.style = style
          self.maxWidth = maxWidth
+         self.image = image
          self.disabled = disabled
          self.action = action
      }
@@ -45,9 +48,12 @@ import SwiftUI
          Button {
              Task { await action() }
          } label: {
-             Text(key)
-                 .font(.system(size: 18, weight: .semibold))
-                 .frame(maxWidth: maxWidth)
+             HStack {
+                 image
+                 Text(key)
+             }
+             .font(.system(size: 18, weight: .semibold))
+             .frame(maxWidth: maxWidth)
          }
          .applyButtonStyle(for: style)
          .controlSize(.large)
