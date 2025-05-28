@@ -23,19 +23,22 @@ public struct CTextField: View {
     @FocusState private var isFocused: Bool
     
     private var withinForm: Bool
+    private var showValidationIcon: Bool
     
     public init(
         _ title: LocalizedStringKey,
         text: Binding<String>,
         validationType: ValidationType,
         validation: Binding<TextFieldValidationState> = .constant(.normal),
-        withinForm: Bool = false
+        withinForm: Bool = false,
+        showValidationIcon: Bool = true
     ) {
         self.title = title
         self._text = text
         self.validationType = validationType
         self._validation = validation
         self.withinForm = withinForm
+        self.showValidationIcon = showValidationIcon
     }
     
     public var body: some View {
@@ -84,7 +87,7 @@ public struct CTextField: View {
                 
                 HStack {
                     Spacer()
-                    if withinForm && hasEdited && hasLooseFocus {
+                    if withinForm && hasEdited && hasLooseFocus && showValidationIcon {
                         validation.view
                     }
                     if validationType.isPassword {
@@ -174,6 +177,9 @@ public enum ValidationType {
     case email
     case password(Step)
     case verificationCode
+    case city
+    case state
+    case country
     
     var isPassword: Bool {
         switch self {
@@ -202,6 +208,12 @@ public enum ValidationType {
             return .never
         case .verificationCode:
             return .never
+        case .city:
+            return .words
+        case .state:
+            return .words
+        case .country:
+            return .words
         }
     }
     
@@ -219,6 +231,12 @@ public enum ValidationType {
             return .password
         case .verificationCode:
             return .oneTimeCode
+        case .city:
+            return .addressCity
+        case .state:
+            return .addressState
+        case .country:
+            return .countryName
         }
     }
     
@@ -236,6 +254,12 @@ public enum ValidationType {
             return .default
         case .verificationCode:
             return .numberPad
+        case .city:
+            return .default
+        case .state:
+            return .default
+        case .country:
+            return .default
         }
     }
 }
@@ -260,6 +284,12 @@ extension ValidationType {
             }
         case .verificationCode:
             Self.validateVerificationCode(value)
+        case .city:
+            Self.validateCity(value)
+        case .state:
+            Self.validateState(value)
+        case .country:
+            Self.validateCountry(value)
         }
     }
     
@@ -312,6 +342,30 @@ extension ValidationType {
             .failed("Verification code must be 6 character long")
         } else {
             .passed
+        }
+    }
+    
+    private static func validateCity(_ city: String) -> TextFieldValidationState {
+        if city.isEmpty {
+            return .failed("Please enter city")
+        } else {
+            return .passed
+        }
+    }
+    
+    private static func validateState(_ state: String) -> TextFieldValidationState {
+        if state.isEmpty {
+            return .failed("Please enter state")
+        } else {
+            return .passed
+        }
+    }
+    
+    private static func validateCountry(_ country: String) -> TextFieldValidationState {
+        if country.isEmpty {
+            return .failed("Please enter country")
+        } else {
+            return .passed
         }
     }
 }
