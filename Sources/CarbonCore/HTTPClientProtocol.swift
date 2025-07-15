@@ -57,7 +57,7 @@ extension HTTPClientProtocol {
         do {
             return try decoder.decode(T.self, from: data)
         } catch {
-            throw CError(code: -1, description: error.localizedDescription, info: ["Decoding Error": "..."])
+            throw CError(code: -1, description: error.localizedDescription, info: ["Decoding Error": "\(error)"])
         }
     }
     
