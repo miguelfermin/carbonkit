@@ -26,7 +26,6 @@ import SwiftUI
      let image: Image?
      let disabled: () -> Bool
      let action: @MainActor () async -> Void
-     let buttonsTintColor = Color.accentColor
      
      public init(
         _ key: LocalizedStringKey,
@@ -62,9 +61,9 @@ import SwiftUI
      }
  }
 
-fileprivate extension View {
+extension View {
     @ViewBuilder
-    public func applyButtonStyle(for style: CButton.Style) -> some View {
+    fileprivate func applyButtonStyle(for style: CButton.Style) -> some View {
         switch style {
         case .primary, .destructive:
             self.buttonStyle(.borderedProminent)
