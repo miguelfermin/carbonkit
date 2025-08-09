@@ -48,7 +48,13 @@ extension CSafariView {
 }
 
 extension View {
-    public func safariScreenCover(
+    /// Presents a SafariView in a sheet when a binding to a Boolean value that you provide is true.
+    /// - Parameters:
+    ///   - isPresented: A binding to a Boolean value that determines whether to present the sheet.
+    ///   - url: The URL to load in the SafariView
+    ///   - entersReaderIfAvailable: A value that specifies whether Safari should enter Reader mode, if it is available.
+    ///   - onDismiss: A closure that is invoked upon view dismiss.
+    public func fullScreenCover(
         isPresented: Binding<Bool>,
         url: URL,
         entersReaderIfAvailable: Bool = false,
@@ -60,6 +66,29 @@ extension View {
                 return .handled
             })
             .fullScreenCover(isPresented: isPresented) {
+                CSafariView(url: url, entersReaderIfAvailable: entersReaderIfAvailable, onDismiss: onDismiss)
+                    .edgesIgnoringSafeArea(.all)
+            }
+    }
+    
+    /// Presents a SafariView in a modal view that covers as much of the screen as possible when binding to a Boolean value you provide is true.
+    /// - Parameters:
+    ///   - isPresented: A binding to a Boolean value that determines whether to present the sheet.
+    ///   - url: The URL to load in the SafariView
+    ///   - entersReaderIfAvailable: A value that specifies whether Safari should enter Reader mode, if it is available.
+    ///   - onDismiss: A closure that is invoked upon view dismiss.
+    public func sheet(
+        isPresented: Binding<Bool>,
+        url: URL,
+        entersReaderIfAvailable: Bool = false,
+        onDismiss: (() -> Void)? = nil
+    ) -> some View {
+        self
+            .environment(\.openURL, OpenURLAction { url in
+                isPresented.wrappedValue.toggle()
+                return .handled
+            })
+            .sheet(isPresented: isPresented) {
                 CSafariView(url: url, entersReaderIfAvailable: entersReaderIfAvailable, onDismiss: onDismiss)
                     .edgesIgnoringSafeArea(.all)
             }
